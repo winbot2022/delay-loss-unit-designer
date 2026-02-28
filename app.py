@@ -2,7 +2,17 @@ import streamlit as st
 
 st.set_page_config(layout="centered", initial_sidebar_state="collapsed")
 
-st.title("遅延損失単価設計ツール")
+st.title("遅延損失 単価設計ツール")
+
+st.markdown(
+    """
+    <div style="font-size:16px; color:gray;">
+    ※ 各設問の右側にある <b>「？」</b> に、入力の補足説明があります。
+    PCではマウスを重ねる／スマホでは「？」をタップすると表示されます。
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # -----------------------------
 # 共通部品
