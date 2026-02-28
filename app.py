@@ -203,15 +203,26 @@ value_loss = gross_profit * rate
 
 
 # -----------------------------
-# 結果表示（淡々と）
+# 結果表示（ボタン押下後）
 # -----------------------------
-total_loss = direct_cost + indirect_cost + value_loss
 
 st.markdown("---")
-st.write(f"直接追加コスト：{direct_cost:,.0f}円")
-st.write(f"間接オペレーション負荷：{indirect_cost:,.0f}円")
-st.write(f"顧客価値毀損（期待値）：{value_loss:,.0f}円")
-st.markdown("---")
-st.write(f"遅延1件あたり損失単価：{total_loss:,.0f}円")
-st.markdown("---")
-st.caption("※本結果は入力値に基づく設計値です。")
+
+if st.button("計算する"):
+    total_loss = direct_cost + indirect_cost + value_loss
+
+    st.markdown(
+        f"""
+        <div style='font-size:28px'>
+        直接追加コスト：{direct_cost:,.0f}円<br>
+        間接オペレーション負荷：{indirect_cost:,.0f}円<br>
+        顧客価値毀損（期待値）：{value_loss:,.0f}円
+        <hr>
+        <b>遅延1件あたり損失単価：{total_loss:,.0f}円</b>
+        <hr>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.caption("※本結果は入力値に基づく設計値です。")
