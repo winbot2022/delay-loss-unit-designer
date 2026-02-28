@@ -4,87 +4,207 @@ st.set_page_config(layout="centered", initial_sidebar_state="collapsed")
 
 st.title("遅延損失単価設計ツール")
 
-# --- 第1層 ---
+# -----------------------------
+# 共通部品
+# -----------------------------
+def time_selector(label: str, help_text: str = "") -> float:
+    """
+    時間（分）の入力：
+    選択式＋自由入力（文章付き選択肢）
+    内部計算値は中央値（仮）
+    """
+    options = [
+        "ほとんど発生しない（0〜2分）",
+        "少し発生する（3〜5分）",
+        "明確に発生する（6〜10分）",
+        "かなり発生する（10分以上）",
+        "自由入力（◯分）",
+    ]
+    choice = st.selectbox(label, options, help=help_text)
+
+    # 中央値（仮）
+    map_minutes = {
+        options[0]: 1,
+        options[1]: 4,
+        options[2]: 8,
+        options[3]: 12,  # 10分以上は仮置き
+    }
+
+    if choice == options[4]:
+        return float(st.number_input("自由入力：追加作業時間（分）", min_value=0, value=0, step=1, format="%d"))
+    return float(map_minutes[choice])
+
+
+def percent_selector(label: str, help_text: str = "") -> float:
+    """
+    割合（0〜1）の入力：
+    選択式＋自由入力（文章付き選択肢）
+    """
+    options = [
+        "ほとんどない（0%）",
+        "一部で発生（10%程度）",
+        "半数程度（50%程度）",
+        "ほぼ毎回発生（80%以上）",
+        "自由入力（◯%）",
+    ]
+    choice = st.selectbox(label, options, help=help_text)
+    map_ratio = {
+        options[0]: 0.0,
+        options[1]: 0.10,
+        options[2]: 0.50,
+        options[3]: 0.80,
+    }
+    if choice == options[4]:
+        pct = st.number_input("自由入力：発生割合（%）", min_value=0, max_value=100, value=0, step=1, format="%d")
+        return float(pct) / 100.0
+    return float(map_ratio[choice])
+
+
+def wage_input(label: str, default: int = 1500, help_text: str = "") -> int:
+    """
+    時給（円）：
+    整数表示、デフォルト1500、100円刻み
+    """
+    return int(
+        st.number_input(
+            label,
+            min_value=0,
+            value=int(default),
+            step=100,
+            format="%d",
+            help=help_text,
+        )
+    )
+
+
+def yen_input(label: str, default: int = 0, step: int = 100, help_text: str = "") -> int:
+    """
+    金額（円）：
+    整数表示（小数なし）
+    """
+    return int(
+        st.number_input(
+            label,
+            min_value=0,
+            value=int(default),
+            step=int(step),
+            format="%d",
+            help=help_text,
+        )
+    )
+
+
+# -----------------------------
+# ① 直接追加コスト
+# -----------------------------
 st.header("① 直接追加コスト")
 
-time_option = st.selectbox(
-    "追加作業時間",
-    ["0〜2分", "3〜5分", "6〜10分", "10分以上", "自由入力"]
+add_minutes = time_selector(
+    "【質問1】追加作業時間（選択式＋任意入力）",
+    help_text="遅延が発生した際、本来不要だった追加作業はだいたい何分程度発生していますか？（再出荷対応・伝票修正・段取り変更など）"
 )
 
-custom_time = 0
-if time_option == "自由入力":
-    custom_time = st.number_input("追加作業時間（分）", min_value=0.0)
+field_wage = wage_input(
+    "【質問2】担当者の時給（円）",
+    default=1500,
+    help_text="上記追加作業を行う担当者の時給です（概算で可）。"
+)
 
-time_map = {
-    "0〜2分": 1,
-    "3〜5分": 4,
-    "6〜10分": 8,
-    "10分以上": 12
-}
+external_cost = yen_input(
+    "【質問3】外部への追加実費（変動費）（円／件）",
+    default=0,
+    step=100,
+    help_text="特急便差額・再出荷送料・外注費など。該当しない場合は0円。"
+)
 
-additional_minutes = custom_time if time_option == "自由入力" else time_map.get(time_option, 0)
-
-hourly_wage = st.number_input("現場担当者の時給（円）", min_value=0.0)
-external_cost = st.number_input("外部追加実費（円）", min_value=0.0)
-
-direct_labor_cost = (additional_minutes / 60) * hourly_wage
+direct_labor_cost = (add_minutes / 60.0) * field_wage
 direct_cost = direct_labor_cost + external_cost
 
-# --- 第2層 ---
+
+# -----------------------------
+# ② 間接オペレーション負荷
+# -----------------------------
 st.header("② 間接オペレーション負荷")
 
-indirect_time_option = st.selectbox(
-    "問い合わせ・社内調整時間",
-    ["0〜2分", "3〜5分", "6〜10分", "10分以上", "自由入力"]
+indirect_minutes = time_selector(
+    "【質問4】問い合わせ・社内調整時間（選択式＋任意入力）",
+    help_text="遅延1件あたり、問い合わせ対応や社内調整にどの程度の時間が発生していますか？（顧客連絡・社内確認・状況説明など）"
 )
 
-custom_indirect = 0
-if indirect_time_option == "自由入力":
-    custom_indirect = st.number_input("調整時間（分）", min_value=0.0)
-
-indirect_minutes = custom_indirect if indirect_time_option == "自由入力" else time_map.get(indirect_time_option, 0)
-
-staff_wage = st.number_input("対応担当者の時給（円）", min_value=0.0)
-
-manager_ratio = st.selectbox("上長確認発生割合",
-    ["0%", "10%", "50%", "80%", "自由入力"]
+office_wage = wage_input(
+    "【質問5】対応担当者の時給（円）",
+    default=1800,
+    help_text="事務・管理系など、現場より高いケースが多い想定（概算で可）。"
 )
 
-ratio_map = {"0%": 0, "10%": 0.1, "50%": 0.5, "80%": 0.8}
-custom_ratio = 0
-if manager_ratio == "自由入力":
-    custom_ratio = st.number_input("発生割合（%）", min_value=0.0) / 100
+manager_ratio = percent_selector(
+    "【質問6】管理職・上長確認の発生割合（選択式＋任意入力）",
+    help_text="遅延案件のうち、上長確認や追加承認が発生する割合です。"
+)
 
-ratio = custom_ratio if manager_ratio == "自由入力" else ratio_map.get(manager_ratio, 0)
+manager_minutes = float(
+    st.number_input(
+        "【質問7】上長対応1回あたりの時間（分）",
+        min_value=0,
+        value=0,
+        step=1,
+        format="%d",
+    )
+)
 
-manager_time = st.number_input("上長対応時間（分）", min_value=0.0)
-manager_wage = st.number_input("上長時給（円）", min_value=0.0)
+manager_wage = wage_input(
+    "【質問8】上長の時給（円）",
+    default=3000,
+    help_text="概算で可。分からなければ役職の相場で仮置きしてください。"
+)
 
-indirect_cost = ((indirect_minutes / 60) * staff_wage) + \
-                ((manager_time / 60) * manager_wage * ratio)
+indirect_cost = ((indirect_minutes / 60.0) * office_wage) + ((manager_minutes / 60.0) * manager_wage * manager_ratio)
 
-# --- 第3層 ---
+
+# -----------------------------
+# ③ 顧客価値毀損（期待値）
+# -----------------------------
 st.header("③ 顧客価値毀損（期待値）")
 
-gross_profit = st.number_input("平均粗利（円）", min_value=0.0)
-
-rate_option = st.selectbox(
-    "リピート低下率",
-    ["0%", "0.5%", "1%", "2%", "5%", "自由入力"]
+gross_profit = yen_input(
+    "【質問9】平均粗利（円／件）",
+    default=1200,
+    step=100,
+    help_text="売上ではなく粗利（概算で可）。"
 )
 
-rate_map = {"0%": 0, "0.5%": 0.005, "1%": 0.01, "2%": 0.02, "5%": 0.05}
-
-custom_rate = 0
-if rate_option == "自由入力":
-    custom_rate = st.number_input("低下率（%）", min_value=0.0) / 100
-
-rate = custom_rate if rate_option == "自由入力" else rate_map.get(rate_option, 0)
+rate_options = [
+    "影響はほぼない（0%）",
+    "わずかに低下（0.5%）",
+    "少し低下（1%）",
+    "明確に低下（2%）",
+    "大きく低下（5%）",
+    "自由入力（◯%）",
+]
+rate_choice = st.selectbox(
+    "【質問10】遅延によるリピート低下率（選択式＋任意入力）",
+    rate_options,
+    help="遅延が発生すると、将来の受注確率はどの程度低下すると感じますか？（感覚で可）",
+)
+rate_map = {
+    rate_options[0]: 0.0,
+    rate_options[1]: 0.005,
+    rate_options[2]: 0.01,
+    rate_options[3]: 0.02,
+    rate_options[4]: 0.05,
+}
+if rate_choice == rate_options[5]:
+    pct = st.number_input("自由入力：低下率（%）", min_value=0, max_value=100, value=0, step=1, format="%d")
+    rate = float(pct) / 100.0
+else:
+    rate = float(rate_map[rate_choice])
 
 value_loss = gross_profit * rate
 
-# --- 合計 ---
+
+# -----------------------------
+# 結果表示（淡々と）
+# -----------------------------
 total_loss = direct_cost + indirect_cost + value_loss
 
 st.markdown("---")
