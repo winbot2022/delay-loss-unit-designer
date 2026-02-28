@@ -101,7 +101,7 @@ st.header("① 直接追加コスト")
 
 add_minutes = time_selector(
     "【質問1】追加作業時間（選択式＋任意入力）",
-    help_text="遅延が発生した際、本来不要だった追加作業はだいたい何分程度発生していますか？（再出荷対応・伝票修正・段取り変更など）"
+    help_text="遅延が発生した際、本来不要だった追加作業は、1件当たり、だいたい何分程度発生していますか？（再出荷対応・伝票修正・荷札再発行・段取り変更など）"
 )
 
 field_wage = wage_input(
@@ -111,10 +111,10 @@ field_wage = wage_input(
 )
 
 external_cost = yen_input(
-    "【質問3】外部への追加実費（変動費）（円／件）",
+    "【質問3】遅延1件あたりの外部への追加実費（変動費）（円／件）",
     default=0,
     step=100,
-    help_text="特急便差額・再出荷送料・外注費など。該当しない場合は0円。"
+    help_text="特急便差額・再出荷送料・外注費など。人件費とは別の現金支出を入力してください。該当しない場合は0円。"
 )
 
 direct_labor_cost = (add_minutes / 60.0) * field_wage
@@ -134,7 +134,7 @@ indirect_minutes = time_selector(
 office_wage = wage_input(
     "【質問5】対応担当者の時給（円）",
     default=1800,
-    help_text="事務・管理系など、現場より高いケースが多い想定（概算で可）。"
+    help_text="事務・管理系など（概算で可）。"
 )
 
 manager_ratio = percent_selector(
@@ -149,6 +149,7 @@ manager_minutes = float(
         value=0,
         step=1,
         format="%d",
+        help_text="上長確認が発生した場合、平均何分程度かかりますか？"
     )
 )
 
@@ -162,15 +163,15 @@ indirect_cost = ((indirect_minutes / 60.0) * office_wage) + ((manager_minutes / 
 
 
 # -----------------------------
-# ③ 顧客価値毀損（期待値）
+# ③ 将来利益の期待損失
 # -----------------------------
-st.header("③ 顧客価値毀損（期待値）")
+st.header("③ 将来利益の期待損失")
 
 gross_profit = yen_input(
-    "【質問9】平均粗利（円／件）",
+    "【質問9】1出荷あたりの平均粗利（円／件）",
     default=1200,
     step=100,
-    help_text="売上ではなく粗利（概算で可）。"
+    help_text="売上ではなく粗利でお答えください。（概算で可）。"
 )
 
 rate_options = [
@@ -216,7 +217,7 @@ if st.button("計算する"):
         <div style='font-size:28px'>
         直接追加コスト：{direct_cost:,.0f}円<br>
         間接オペレーション負荷：{indirect_cost:,.0f}円<br>
-        顧客価値毀損（期待値）：{value_loss:,.0f}円
+        将来利益の期待損失：{value_loss:,.0f}円
         <hr>
         <b>遅延1件あたり損失単価：{total_loss:,.0f}円</b>
         <hr>
