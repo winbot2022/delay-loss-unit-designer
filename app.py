@@ -145,12 +145,12 @@ manager_ratio = percent_selector(
 manager_minutes = float(
     st.number_input(
         "【質問7】上長対応1回あたりの時間（分）",
+        help_text="上長確認が発生した場合、平均何分程度かかりますか？",
         min_value=0,
         value=0,
         step=1,
         format="%d",
-        help_text="上長確認が発生した場合、平均何分程度かかりますか？"
-    )
+        )
 )
 
 manager_wage = wage_input(
